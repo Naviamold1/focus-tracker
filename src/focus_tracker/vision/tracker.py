@@ -53,6 +53,19 @@ SMOOTHING = 0.5  # EMA weight of the newest pose sample
 _CAMERA_BACKEND = {"win32": cv2.CAP_DSHOW, "linux": cv2.CAP_V4L2}.get(sys.platform, cv2.CAP_ANY)
 
 
+def list_cameras() -> list[tuple[int, str]]:
+    """(index, name) of capture devices, indices valid for this OS's capture backend.
+
+    Uses cv2_enumerate_cameras (DirectShow on Windows, V4L2 on Linux). Probing does not open
+    the devices, so it is safe while a camera is in use. Empty list on any failure."""
+    try:
+        from cv2_enumerate_cameras import enumerate_cameras
+
+        return [(c.index, c.name) for c in enumerate_cameras(_CAMERA_BACKEND)]
+    except Exception:  # noqa: BLE001  # enumeration is a convenience; never break the UI
+        return []
+
+
 class VisionTracker:
     def __init__(self, settings: dict[str, Any]) -> None:
         self._settings = settings
@@ -61,6 +74,7 @@ class VisionTracker:
         self._enabled = threading.Event()
         self._enabled.set()
         self._calibrate_requested = threading.Event()
+        self._switch = threading.Event()  # set by set_camera(); ends the capture loop so _run reopens
         self._event: VisionEvent | None = None
         self._frame: FrameSnapshot | None = None  # replaced on each inference, never persisted
         self._frame_lock = threading.Lock()
@@ -91,6 +105,11 @@ class VisionTracker:
     def calibrate(self) -> None:
         """Begin a 3 s baseline capture (look at the screen); needs the camera enabled."""
         self._calibrate_requested.set()
+
+    def set_camera(self, index: int) -> None:
+        """Switch to capture device `index` (from list_cameras()); takes effect within one loop pass."""
+        self._settings["camera_index"] = int(index)
+        self._switch.set()
 
     def baseline(self) -> Baseline:
         return self._baseline
@@ -156,10 +175,11 @@ class VisionTracker:
                         self._publish(degraded=True)
                         self._stop.wait(MODEL_RETRY_S)
                         continue
+                self._switch.clear()
                 cap = self._open_camera()
                 if cap is None:
                     self._publish(degraded=True)
-                    self._stop.wait(CAMERA_RETRY_S)
+                    self._wait_retry(CAMERA_RETRY_S)
                     continue
                 try:
                     self._loop(cap, landmarker)
@@ -169,6 +189,12 @@ class VisionTracker:
         finally:
             if landmarker is not None:
                 landmarker.close()
+
+    def _wait_retry(self, seconds: float) -> None:
+        """Sleep before retrying the camera, waking early on stop or a camera switch."""
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not (self._stop.is_set() or self._switch.is_set()):
+            self._stop.wait(0.3)
 
     def _open_camera(self) -> cv2.VideoCapture | None:
         try:
@@ -214,7 +240,7 @@ class VisionTracker:
         next_infer = last_infer = fps = 0.0
         read_failures = 0
 
-        while not self._stop.is_set() and self._enabled.is_set():
+        while not self._stop.is_set() and self._enabled.is_set() and not self._switch.is_set():
             # grab() paces us at camera rate and is cheap; retrieve + inference only when due.
             if not cap.grab():
                 read_failures += 1

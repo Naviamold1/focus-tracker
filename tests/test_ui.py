@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -80,3 +81,17 @@ def test_window_sends_commands_and_banner(qapp: QApplication) -> None:
     w._submit_goal()
     w.btn_snooze.click()
     assert engine.commands == [{"cmd": "set_goal", "goal": "Edit video"}, {"cmd": "snooze"}]
+
+
+def test_camera_picker_switches_and_follows_engine(qapp: QApplication) -> None:
+    engine = FakeEngine()
+    w = MainWindow(engine)
+    w._cameras = [(0, "OBS Virtual Camera"), (1, "USB Webcam")]
+    w._fill_camera_picker()
+    w.apply(make_state(0, ts_ms=1_000_000))  # engine reports camera 0
+    w.cam_picker.activated.emit(w.cam_picker.findData(1))
+    assert engine.commands == [{"cmd": "set_camera", "index": 1}]
+    # An index the OS no longer lists stays visible instead of silently jumping elsewhere.
+    w.apply(dataclasses.replace(make_state(0, ts_ms=1_002_000), camera_index=4))
+    assert w.cam_picker.currentText() == "Camera 4 (not found)"
+    assert len(engine.commands) == 1  # syncing from state never re-sends

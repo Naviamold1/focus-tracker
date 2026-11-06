@@ -106,6 +106,15 @@ QTableWidget {{ gridline-color: {LINE}; }}
 QSlider::groove:horizontal {{ height: 4px; background: {LINE}; }}
 QSlider::sub-page:horizontal {{ background: {APP_ALT}; }}
 QSlider::handle:horizontal {{ width: 12px; margin: -5px 0; border-radius: 6px; background: {APP}; }}
+QComboBox {{
+    background: {PANEL}; color: {INK}; border: 1px solid {LINE};
+    padding: 3px 8px; border-radius: 3px; min-width: 150px;
+}}
+QComboBox::drop-down {{ border: 0; width: 18px; }}
+QComboBox QAbstractItemView {{
+    background: {PANEL}; color: {INK}; border: 1px solid {LINE};
+    selection-background-color: {LINE}; outline: 0;
+}}
 QMenu {{ background: {PANEL}; color: {INK}; border: 1px solid {LINE}; padding: 4px; }}
 QMenu::item {{ padding: 6px 22px; }}
 QMenu::item:selected {{ background: {LINE}; }}

@@ -9,6 +9,7 @@ from typing import Any
 from PySide6.QtCore import QRectF, QSize, QStringListModel, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QColor, QFontMetrics, QPainter
 from PySide6.QtWidgets import (
+    QComboBox,
     QCompleter,
     QFrame,
     QGridLayout,
@@ -212,8 +213,25 @@ class MainWindow(QMainWindow):
 
     def _build_camera_column(self) -> QWidget:
         col, lay = column()
-        lay.addWidget(caps("Camera · what MediaPipe sees"))
+        head = QHBoxLayout()
+        head.setContentsMargins(0, 0, 0, 0)
+        head.addWidget(caps("Camera · what MediaPipe sees"))
+        head.addStretch(1)
+        self.cam_picker = QComboBox()
+        self.cam_picker.setFont(theme.body_font(11))
+        self.cam_picker.setToolTip("Capture device")
+        # `activated` fires only on user choice, so syncing from UiState never re-sends a command.
+        self.cam_picker.activated.connect(self._on_camera_picked)
+        self.cam_refresh = QPushButton("Refresh")
+        self.cam_refresh.setToolTip("Look for newly connected cameras")
+        self.cam_refresh.clicked.connect(self._refresh_cameras)
+        head.addWidget(self.cam_picker)
+        head.addWidget(self.cam_refresh)
+        lay.addLayout(head)
         lay.addSpacing(8)
+        self._cameras: list[tuple[int, str]] = []
+        self._camera_index = 0
+        self._refresh_cameras()
         self.camera = CameraView(self._engine.vision)
         self.camera.turn_on_clicked.connect(lambda: self.command({"cmd": "toggle_camera"}))
         lay.addWidget(self.camera)
@@ -246,6 +264,31 @@ class MainWindow(QMainWindow):
         lay.addLayout(readouts)
         lay.addStretch(1)
         return col
+
+    def _refresh_cameras(self) -> None:
+        """Re-enumerate capture devices (cheap, does not open them) and rebuild the picker."""
+        try:
+            from focus_tracker.vision import list_cameras
+
+            self._cameras = list_cameras()
+        except ImportError:  # vision deps missing: picker shows only the configured index
+            self._cameras = []
+        self._fill_camera_picker()
+
+    def _fill_camera_picker(self) -> None:
+        self.cam_picker.clear()
+        cams = list(self._cameras)
+        if self._camera_index not in {i for i, _ in cams}:
+            cams.insert(0, (self._camera_index, f"Camera {self._camera_index} (not found)"))
+        for index, name in cams:
+            self.cam_picker.addItem(name, index)
+        self.cam_picker.setCurrentIndex(self.cam_picker.findData(self._camera_index))
+
+    def _on_camera_picked(self, row: int) -> None:
+        index = self.cam_picker.itemData(row)
+        if isinstance(index, int) and index != self._camera_index:
+            self._camera_index = index
+            self.command({"cmd": "set_camera", "index": index})
 
     def _build_surface_column(self) -> QWidget:
         col, lay = column()
@@ -405,6 +448,9 @@ class MainWindow(QMainWindow):
         self.rd_limit.setText(f"±{yaw_max:.0f}°")
         self.rd_base.setText(str(extra.get("baseline") or "default"))
         self.btn_camera.setText("Camera off" if ui.camera_on else "Camera on")
+        if ui.camera_index != self._camera_index:
+            self._camera_index = ui.camera_index
+            self._fill_camera_picker()
 
         # Foreground column
         s = ui.surface

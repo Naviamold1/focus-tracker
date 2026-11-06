@@ -127,6 +127,7 @@ def make_state(index: int, *, ts_ms: int, camera_on: bool = True) -> UiState:
         goal_history=[GOAL, "Edit the demo video", "Triage inbox"],
         thresholds={"dwell_sec": 60.0, "afk_sec": 180.0, "trust_conf": 0.8, "yaw_max": 20.0},
         camera_on=camera_on,
+        camera_index=0,
         jev_online=True,
         jev_last_ms=203.0,
     )

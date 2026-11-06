@@ -239,6 +239,24 @@ wheels = [
 ]
 
 [[package]]
+name = "cv2-enumerate-cameras"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-framework-avfoundation", marker = "sys_platform == 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/61/65ea4f16f211b6bd90c18384296a6a79e7d5f49f56082ee36a2185a8f5d6/cv2_enumerate_cameras-1.4.0.tar.gz", hash = "sha256:d6f39a236e15cc1bddf00e852a4c6bdfea94d3eebb2d3213848bb5c4036b0689", size = 12315, upload-time = "2026-09-26T14:09:42.754Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/48/2f/5277bcabd62e675b85f00825d8ebc3ceaa23c7fd6362a4dc09f3accc716e/cv2_enumerate_cameras-1.4.0-cp310-abi3-win32.whl", hash = "sha256:9c5cd79dd6e8d2b6450e40bb208d968f50976cf15f276c5e10c9880498e23b25", size = 211333, upload-time = "2026-09-26T14:09:32.664Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/6d/15b6f504b79749a45a53304310c1665044f03d1b79ec2b00598924fc0d99/cv2_enumerate_cameras-1.4.0-cp310-abi3-win_amd64.whl", hash = "sha256:0dcc60c0cc1638bbfb381d0430391d3aabb70324e5eef338d018831207813060", size = 209221, upload-time = "2026-09-26T14:09:34.228Z" },
+    { url = "https://files.pythonhosted.org/packages/74/e6/96981e59cd724bad4155949b14bbb67d45d0502c15b3cf5cc522a4cedb8d/cv2_enumerate_cameras-1.4.0-cp314-cp314t-win32.whl", hash = "sha256:fb6312124060093227ff82f0c4a0ff4161b576e9bfcd6bbbafc63b5b0c4788c3", size = 217218, upload-time = "2026-09-26T14:09:35.636Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/be/933593c37b616a63df1491250b7b999bc0297399a69ac616c019a01d5e4b/cv2_enumerate_cameras-1.4.0-cp314-cp314t-win_amd64.whl", hash = "sha256:d7282a37bd340bd63b65950b9fb8e6c2fc7dd5b9141f6cfbb77bf37507932bbe", size = 216375, upload-time = "2026-09-26T14:09:37.274Z" },
+    { url = "https://files.pythonhosted.org/packages/41/4c/b2b96a9f88d0b406d36cf5d20af8137f1cb2c271cb13ec5b5e9df82714c0/cv2_enumerate_cameras-1.4.0-cp315-cp315t-win32.whl", hash = "sha256:c6bb01c203813ad3009f504a1bd914efb691174fecd9e99b42e21b8b9d522039", size = 217220, upload-time = "2026-09-26T14:09:38.851Z" },
+    { url = "https://files.pythonhosted.org/packages/02/4e/bd22f6430faea2f47b11fd92c18a847b4d60cd707712cd913bd5df9b681a/cv2_enumerate_cameras-1.4.0-cp315-cp315t-win_amd64.whl", hash = "sha256:791e7f68c5d62c3c22861c53f87b1174f6aa663eeceef8a43fab17ca80fb099c", size = 216376, upload-time = "2026-09-26T14:09:40.31Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/99/e7ab30db5eb4f2f87be9f419eda101ba1cdba6192c5cfdc7ef60305866e7/cv2_enumerate_cameras-1.4.0-py3-none-any.whl", hash = "sha256:ef3db06a004ada2e82b62efaac69f37223f1505b64954bf0f838d21f4cf237cc", size = 13334, upload-time = "2026-09-26T14:09:41.693Z" },
+]
+
+[[package]]
 name = "cycler"
 version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -286,6 +304,7 @@ name = "focus-tracker"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cv2-enumerate-cameras" },
     { name = "fastapi" },
     { name = "huggingface-hub" },
     { name = "keyboard" },
@@ -311,6 +330,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cv2-enumerate-cameras", specifier = ">=1.4.0" },
     { name = "fastapi", specifier = ">=0.162.0" },
     { name = "huggingface-hub", specifier = ">=2.4.0" },
     { name = "keyboard", specifier = ">=0.13.5" },

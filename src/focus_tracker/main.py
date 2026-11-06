@@ -238,6 +238,7 @@ class Runtime:
                 "yaw_max": float(self.cfg.data["vision"].get("yaw_max", 20.0)),
             },
             camera_on=self.cfg.data["camera_on"],
+            camera_index=int(self.cfg.data["vision"].get("camera_index", 0)),
             jev_online=jev_online,
             jev_last_ms=jev_ms,
         )
@@ -259,6 +260,12 @@ class Runtime:
             self.cfg.save()
             if self.vision is not None:
                 self.vision.set_enabled(self.cfg.data["camera_on"] and not self.engine.camera_released)
+        elif cmd == "set_camera" and isinstance(msg.get("index"), int):
+            # cfg.data["vision"] is the dict the tracker reads, so this also persists the choice.
+            self.cfg.data["vision"]["camera_index"] = msg["index"]
+            self.cfg.save()
+            if self.vision is not None:
+                self.vision.set_camera(msg["index"])
         elif cmd == "calibrate":
             calibrate = getattr(self.vision, "calibrate", None)
             if calibrate is not None:

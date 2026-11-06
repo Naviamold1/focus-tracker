@@ -14,7 +14,7 @@ Opens the Qt desktop window. Set a goal first; with no goal the engine only obse
 uv run python -c "from focus_tracker.main import run_headless; run_headless()"
 ```
 
-The browser extension connects to `ws://127.0.0.1:8765/ws/browser`; the camera preview stays inside the window and is never saved or sent.
+The browser extension connects to `ws://127.0.0.1:8765/ws/browser`; the camera preview stays inside the window and is never saved or sent. Pick the capture device from the dropdown above the camera view (Refresh picks up newly plugged cameras); the choice is saved. Virtual cameras such as OBS Virtual Camera are listed too, so check you picked a real webcam if no face is found.
 
 `TYPESAFE_API_KEY` goes in `.env` (cwd or the data dir below). Without it the classifier runs on the local tier only. Config and logs live in `%APPDATA%\focus-tracker` on Windows and `$XDG_DATA_HOME/focus-tracker` (default `~/.local/share/focus-tracker`) on Linux. Override with `FOCUS_TRACKER_DATA`.
 

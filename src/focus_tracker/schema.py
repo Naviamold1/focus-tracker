@@ -187,6 +187,9 @@ class VisionLike(Protocol):
     def calibrate(self) -> None:
         """Start a 3 s 'look at the screen' baseline capture (spec §10 #10, adopted)."""
         ...
+    def set_camera(self, index: int) -> None:
+        """Switch capture device; the thread releases the current camera and opens `index`."""
+        ...
     def latest(self) -> VisionEvent | None: ...
     def latest_frame(self) -> FrameSnapshot | None:
         """Most recent inferred frame with overlay data; None when the camera is off or unavailable."""
@@ -207,6 +210,7 @@ class UiState:
     goal_history: list[str]
     thresholds: dict[str, float]
     camera_on: bool
+    camera_index: int  # capture device in use, as listed by focus_tracker.vision.list_cameras()
     jev_online: bool
     jev_last_ms: float | None  # last Jev round-trip latency
 
@@ -221,7 +225,7 @@ class EngineHandle(Protocol):
 
     def command(self, msg: dict[str, Any]) -> None:
         """Thread-safe. Same command dicts as before: set_goal, toggle_camera, calibrate, snooze,
-        reclassify{category}, exclude, set_threshold{name,value}, demo{which: D|G|R}."""
+        reclassify{category}, exclude, set_threshold{name,value}, set_camera{index}, demo{which: D|G|R}."""
         ...
 
     def vision(self) -> VisionLike | None:
