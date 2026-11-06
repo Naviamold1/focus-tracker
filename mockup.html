@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Focus Tracker — instrument panel (mockup)</title>
+<style>
+  :root {
+    --bg: #0F1215;
+    --panel: #161A1E;
+    --panel-2: #1B2026;
+    --line: #262C33;
+    --ink: #E8E6DF;
+    --muted: #8A93A0;
+    --dim: #5B6470;
+    --green: #4CC38A;
+    --amber: #E8A33D;
+    --blue: #6C9BD1;
+    --ash: #8A93A0;
+    --red: #E0564A;
+    --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+    --sans: "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: dark; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 18px 18px 48px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  b, strong { font-weight: 600; }
+  button {
+    font: 500 12.5px var(--sans);
+    color: var(--ink);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  button:hover { border-color: #3A434D; background: #20262D; }
+  button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+  button.primary { background: #234; }
+  .mono { font-family: var(--mono); }
+  .dim { color: var(--dim); }
+  .muted { color: var(--muted); }
+
+  /* ---------- nudge banner ---------- */
+  #banner {
+    display: none;
+    border: 1px solid var(--amber);
+    background: #2A2214;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+  }
+  #banner.escalate { border-color: var(--red); background: #2A1614; }
+  #banner.show { display: flex; align-items: center; gap: 14px; }
+  #banner .msg { flex: 1; font-size: 13.5px; }
+  #banner .why { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: block; margin-top: 3px; }
+  #banner button { background: transparent; }
+  #banner button.work { border-color: var(--green); color: var(--green); }
+
+  /* ---------- top status strip ---------- */
+  .strip {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: stretch;
+    margin-bottom: 14px;
+  }
+  .state-block {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 14px 18px 12px;
+    min-width: 300px;
+  }
+  .eyebrow {
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  #state-word {
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1;
+    transition: color .2s;
+  }
+  #state-sub { font-size: 12px; margin-top: 6px; color: var(--muted); }
+  #state-sub .mono { color: var(--ink); }
+
+  .goal-block {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 14px 16px 12px;
+  }
+  .goal-row { display: flex; gap: 8px; }
+  #goal-input {
+    flex: 1;
+    font: 500 13px var(--mono);
+    color: var(--ink);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    min-width: 0;
+  }
+  #goal-input:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .goal-history { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips {
+    font: 500 11px var(--mono);
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+  .chips:hover { color: var(--ink); border-color: #3A434D; }
+  .chips.active { color: var(--green); border-color: var(--green); }
+
+  /* ---------- attention geometry (signature) ---------- */
+  .geometry {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 14px 16px 12px;
+  }
+  #yaw-canvas { display: block; width: 100%; height: 92px; }
+  .geom-legend { display: flex; justify-content: space-between; margin-top: 6px; }
+  .geom-legend .mono { font-size: 11px; color: var(--muted); }
+  #geom-verdict { color: var(--ink); }
+
+  /* ---------- rows ---------- */
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    padding: 14px 16px 14px;
+  }
+  .card h3 {
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  /* PI sparkline */
+  #pi-canvas { display: block; width: 100%; height: 74px; }
+  .pi-foot { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+  #pi-value { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+
+  /* dwell */
+  .dwell-num { font-family: var(--mono); font-size: 30px; line-height: 1; margin: 4px 0 2px; }
+  .dwell-bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin-top: 10px; }
+  #dwell-fill { height: 100%; width: 0%; background: var(--amber); transition: width .4s; }
+
+  /* cache table */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--dim); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line);
+  }
+  td { padding: 6px 8px; border-bottom: 1px solid #1E242B; }
+  tr:last-child td { border-bottom: none; }
+  td .mono, th .mono { font-family: var(--mono); }
+  .tag {
+    font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 4px;
+    border: 1px solid; white-space: nowrap;
+  }
+  .tag.jev  { color: var(--green); border-color: #2A5A43; }
+  .tag.cache{ color: var(--blue);  border-color: #2F4A66; }
+  .tag.rule { color: var(--muted); border-color: #39404A; }
+  .tag.pend { color: var(--amber); border-color: #5A4520; }
+  .tag.stale{ color: var(--dim);   border-color: #333A42; font-style: italic; }
+  .cat { font-family: var(--mono); font-size: 11.5px; }
+  .cat.productive { color: var(--green); }
+  .cat.neutral { color: var(--blue); }
+  .cat.distraction { color: var(--amber); }
+  .cat.unknown { color: var(--dim); }
+
+  /* sliders */
+  .slider-row { display: grid; grid-template-columns: 150px 1fr 54px; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .slider-row label { font-size: 12.5px; color: var(--muted); }
+  .slider-row output { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--blue); background: var(--panel-2); }
+  input[type=range]:focus-visible { outline: 2px solid var(--blue); }
+
+  /* scenario buttons */
+  .demo-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .demo-row .kbd {
+    font-family: var(--mono); font-size: 10.5px; color: var(--dim);
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-left: 7px;
+  }
+  .footnote { margin-top: 14px; font-size: 11.5px; color: var(--dim); line-height: 1.6; }
+  .footnote .mono { color: var(--muted); }
+
+  /* camera LED */
+  .led { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: baseline; background: var(--ash); }
+  .led.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .led.off { background: #3A4149; box-shadow: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #dwell-fill { transition: none; }
+  }
+  @media (max-width: 640px) {
+    .row2, .row3 { grid-template-columns: 1fr; }
+    .strip { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= nudge banner ======================= -->
+<div id="banner" role="alert">
+  <div class="msg">
+    <span id="banner-msg">—</span>
+    <span class="why" id="banner-why">—</span>
+  </div>
+  <button id="snooze-btn" class="primary">Snooze 10 min</button>
+  <button id="productive-btn" class="work">This is productive</button>
+  <button id="dismiss-btn">Dismiss</button>
+</div>
+
+<!-- ======================= status strip ======================= -->
+<div class="strip">
+  <div class="state-block">
+    <div class="eyebrow">Engine state</div>
+    <div id="state-word">—</div>
+    <div id="state-sub">—</div>
+  </div>
+  <div class="goal-block">
+    <div class="eyebrow">Declared goal — everything is judged against this</div>
+    <div class="goal-row">
+      <input id="goal-input" type="text" value="write the spec for the hackathon project"
+             spellcheck="false" aria-label="Session goal" />
+      <button id="goal-set">Set goal</button>
+    </div>
+    <div class="goal-history" id="goal-history"></div>
+  </div>
+  <div class="geometry">
+    <div class="eyebrow">Attention geometry <span class="dim">(local · 5–10 fps)</span></div>
+    <canvas id="yaw-canvas" width="520" height="92" aria-label="Head yaw trace"></canvas>
+    <div class="geom-legend"><span class="mono">yaw <span id="yaw-val">0°</span> · pitch <span id="pitch-val">0°</span></span><span class="mono" id="geom-verdict">facing: —</span></div>
+  </div>
+</div>
+
+<!-- ======================= middle row ======================= -->
+<div class="row3">
+  <div class="card">
+    <h3>Productivity index · last hour</h3>
+    <canvas id="pi-canvas" width="420" height="74" aria-label="Productivity index, last hour"></canvas>
+    <div class="pi-foot">
+      <span>PI <b class="mono" id="pi-value">62</b></span>
+      <span>focused <span class="mono" id="pi-focus-time">23m</span> · afk <span class="mono" id="pi-afk-time">6m</span></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Dwell on current surface</h3>
+    <div class="dwell-num" id="dwell-num">0:00</div>
+    <div class="dim" id="dwell-note">nudge at 1:00 of distraction + facing</div>
+    <div class="dwell-bar"><div id="dwell-fill"></div></div>
+  </div>
+  <div class="card">
+    <h3>Camera &amp; inputs</h3>
+    <div style="margin: 6px 0 10px"><span class="led on" id="cam-led"></span><span id="cam-label">camera on · releasing during afk</span></div>
+    <div class="mono" id="input-label" style="font-size:11.5px;color:var(--muted)">input idle 0s · debounce 2s dwell</div>
+    <div style="margin-top:10px"><button id="camera-toggle">Camera: on</button></div>
+  </div>
+</div>
+
+<!-- ======================= cache inspector ======================= -->
+<div class="card" style="margin-bottom:14px">
+  <h3>Decisions the model made <span class="dim">(cache · newest first)</span></h3>
+  <table>
+    <thead><tr><th>surface</th><th>what we sent</th><th>verdict</th><th>source</th></tr></thead>
+    <tbody id="cache-body"></tbody>
+  </table>
+</div>
+
+<!-- ======================= controls ======================= -->
+<div class="row2">
+  <div class="card">
+    <h3>Scenarios <span class="dim">(test keys, spec §4.6)</span></h3>
+    <div class="demo-row">
+      <button id="demo-d">Simulate distraction<span class="kbd">D</span></button>
+      <button id="demo-g">Flip goal + unknown site<span class="kbd">G</span></button>
+      <button id="demo-a">Simulate user away</button>
+      <button id="demo-r">Reset session<span class="kbd">R</span></button>
+      <button id="speed-toggle">1× real time</button>
+    </div>
+    <div class="footnote" style="margin-top:10px">
+      <span class="mono">D</span> replays the 20-min distraction arc ·
+      <span class="mono">G</span> demos goal-conditioned classification on an unseen site ·
+      <span class="mono">R</span> resets PI and clock · "1×" toggles between real spec timings and 8× preview speed.
+    </div>
+  </div>
+  <div class="card">
+    <h3>Thresholds</h3>
+    <div class="slider-row">
+      <label for="th-dwell">Nudge dwell</label>
+      <input type="range" id="th-dwell" min="30" max="120" value="60" />
+      <output id="o-dwell">60 s</output>
+    </div>
+    <div class="slider-row">
+      <label for="th-afk">AFK after</label>
+      <input type="range" id="th-afk" min="60" max="600" value="180" />
+      <output id="o-afk">180 s</output>
+    </div>
+    <div class="slider-row">
+      <label for="th-conf">Trust at confidence ≥</label>
+      <input type="range" id="th-conf" min="0.5" max="1" step="0.05" value="0.8" />
+      <output id="o-conf">0.80</output>
+    </div>
+    <div class="slider-row">
+      <label for="th-yaw">Facing · max yaw</label>
+      <input type="range" id="th-yaw" min="10" max="35" value="20" />
+      <output id="o-yaw">20°</output>
+    </div>
+  </div>
+</div>
+
+<div class="footnote">
+  Mockup only — simulates the engine's 2 s tick locally, canned Jev answers with a fake ≈0.9 s latency,
+  and the payload it would ship (<span class="mono">{goal, kind, app, domain, url, page_title}</span>, query &amp; fragment stripped).
+  Vocally: nothing here touches a camera or the network yet.
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- mock decision data (what Jev would have said) ----------
+  const VERDICTS = {
+    "github.com":        { cat: "productive",  conf: 0.97, goalAligned: null },
+    "localhost:8765":    { cat: "productive",  conf: 0.95, goalAligned: null },
+    "mail.google.com":   { cat: "neutral",     conf: 0.88, goalAligned: null },
+    "youtube.com/watch": { cat: "distraction", conf: 0.91, goalAligned: 0.08 },
+    "discord":           { cat: "distraction", conf: 0.86, goalAligned: 0.15 },
+    "overwatch":         { cat: "distraction", conf: 0.99, goalAligned: 0.02 },
+    "acrobat.pdf":       { cat: "neutral",     conf: 0.74, goalAligned: null },
+    // unknown site for the G scenario — answered after simulated latency
+    "meaningful-bakes.com": { cat: "distraction", conf: 0.29, goalAligned: null, lowConfidence: true },
+  };
+
+  const RULE_TIER = {                      // fallback-only, demoted tier
+    "github.com": "productive", "localhost": "productive",
+    "youtube.com": "distraction", "reddit.com": "distraction",
+    "discord": "distraction", "explorer": "neutral",
+  };
+
+  // ---------- state ----------
+  const st = {
+    speed: 1,               // seconds of "virtual time" per real second
+    realTime: true,
+    goal: "write the spec for the hackathon project",
+    goalHistory: ["write the spec for the hackathon project", "edit the demo reel", "study for the physics exam"],
+    surface: { kind: "app", app: "Visual Studio Code", domain: null, label: "Visual Studio Code" },
+    sweep: [ // cache rows (newest first)
+      { key: "app:VisualStudioCode", cat: "productive", src: "jev", conf: 0.93, sent: "app+title" },
+      { key: "domain:youtube.com|u8f2", cat: "distraction", src: "cache", conf: 0.91, sent: "domain+url+page_title" },
+      { key: "domain:mail.google.com|1b04", cat: "neutral", src: "jev", conf: 0.88, sent: "domain+page_title" },
+      { key: "app:explorer|00a1", cat: "neutral", src: "rule", conf: null, sent: "app only" },
+    ],
+    state: "focused",
+    dwell: 0, inputIdle: 0,
+    present: true, facing: true, yaw: -4, pitch: 3,
+    pendingClass: false,
+    nudgeShown: false, escalated: false,
+    pi: 62, piSeries: [],
+    focusMin: 23, afkMin: 6,
+    cameraOn: true,
+    confidence: 0.93, category: "productive",
+  };
+
+  // ---------- tiny helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const fmtTime = (s) => { const m = Math.floor(s / 60); return m + ":" + String(Math.floor(s - m * 60)).padStart(2, "0"); };
+
+  // ---------- goal editor ----------
+  function renderGoal() {
+    const target = $("goal-history");
+    target.innerHTML = "";
+    st.goalHistory.forEach(g => {
+      const b = document.createElement("button");
+      b.className = "chips" + (g === st.goal ? " active" : "");
+      b.textContent = g.length > 34 ? g.slice(0, 32) + "…" : g;
+      b.title = g;
+      b.onclick = () => { st.goal = g; $("goal-input").value = g; invalidateContested(); };
+      target.appendChild(b);
+    });
+  }
+  $("goal-set").onclick = () => {
+    const g = $("goal-input").value.trim();
+    if (!g) return;
+    st.goal = g;
+    st.goalHistory.unshift(g);
+    st.goalHistory = [...new Set(st.goalHistory)].slice(0, 5);
+    renderGoal();
+    invalidateContested();
+  };
+
+  // goal change → contested keys re-ask (spec §4.2.4); here: one row becomes pending then answered
+  function invalidateContested() {
+    const row = st.sweep.find(r => r.cat === "distraction");
+    if (!row) return;
+    row.cat = "unknown"; row.src = "pend"; row.conf = null;
+    st.pendingClass = true;
+    setTimeout(() => {
+      row.cat = VERDICTS["youtube.com/watch"].cat; row.src = "jev"; row.conf = VERDICTS["youtube.com/watch"].conf;
+      st.pendingClass = false;
+      paintCache();
+    }, 900 / st.speed);
+    paintCache();
+  }
+
+  // ---------- yaw trace (signature element) ----------
+  const yawCanvas = $("yaw-canvas"), yawCtx = yawCanvas.getContext("2d");
+  const trace = Array.from({ length: 260 }, () => ({ y: -4, p: 3 }));
+  function drawYaw() {
+    const w = yawCanvas.width, h = yawCanvas.height, midY = h * 0.62;
+    yawCtx.clearRect(0, 0, w, h);
+    // facing band |yaw| < threshold
+    const max = 40, pxPerDeg = w / 2 / (max / 2) / 1;
+    const bandHalf = (thYaw() / max) * (w / 2);
+    yawCtx.fillStyle = "rgba(76,195,138,0.09)";
+    yawCtx.fillRect(midX() - bandHalf, 0, bandHalf * 2, h);
+    yawCtx.strokeStyle = "#2A313A";
+    yawCtx.beginPath(); yawCtx.moveTo(0, midY); yawCtx.lineTo(w, midY); yawCtx.stroke();
+    // scale marks ±20°
+    [-20, 0, 20].forEach(d => {
+      const x = midX() + d * pxPerDeg;
+      yawCtx.strokeStyle = d === 0 ? "#3A434D" : "#262C33";
+      yawCtx.beginPath(); yawCtx.moveTo(x, midY - 8); yawCtx.lineTo(x, midY + 8); yawCtx.stroke();
+    });
+    // trace
+    yawCtx.strokeStyle = (st.present && st.cameraOn) ? "rgba(232,163,61,0.85)" : "#333A42";
+    yawCtx.lineWidth = 1.6;
+    yawCtx.beginPath();
+    trace.forEach((t, i) => {
+      const x = (i / (trace.length - 1)) * w;
+      const y = midY - t.y * pxPerDeg * 0.9;
+      i ? yawCtx.lineTo(x, y) : yawCtx.moveTo(x, y);
+    });
+    yawCtx.stroke();
+    // head dot
+    const gx = midX() + st.yaw * pxPerDeg, gy = midY - st.pitch * 2.2;
+    yawCtx.fillStyle = (st.present && st.cameraOn) ? "#E8A33D" : "#3A4149";
+    yawCtx.beginPath(); yawCtx.arc(gx, Math.max(10, Math.min(h - 10, gy)), 4.5, 0, 7); yawCtx.fill();
+  }
+  function midX() { return yawCanvas.width / 2; }
+  function thYaw() { return st.thYaw ?? 20; }
+
+  // ---------- PI sparkline ----------
+  const piCanvas = $("pi-canvas"), piCtx = piCanvas.getContext("2d");
+  function seedPi() { st.piSeries = Array.from({ length: 60 }, (_, i) => 40 + Math.round(24 * Math.sin(i / 9) + (i % 7) * 1.2)); }
+  function drawPi() {
+    const w = piCanvas.width, h = piCanvas.height;
+    piCtx.clearRect(0, 0, w, h);
+    const max = Math.max(...st.piSeries, 100), step = w / (st.piSeries.length - 1);
+    piCtx.strokeStyle = "#4CC38A"; piCtx.lineWidth = 1.8;
+    piCtx.beginPath();
+    st.piSeries.forEach((v, i) => {
+      const x = i * step, y = h - (v / max) * (h - 8) - 4;
+      i ? piCtx.lineTo(x, y) : piCtx.moveTo(x, y);
+    });
+    piCtx.stroke();
+    piCtx.fillStyle = "rgba(76,195,138,0.10)";
+    piCtx.lineTo(w, h); piCtx.lineTo(0, h); piCtx.closePath(); piCtx.fill();
+  }
+
+  // ---------- cache table ----------
+  function paintCache() {
+    const body = $("cache-body");
+    body.innerHTML = "";
+    st.sweep.forEach(r => {
+      const tr = document.createElement("tr");
+      const srcTag = { jev: "jev", cache: "cache", rule: "rule", pend: "pend", stale: "stale", offline: "rule" }[r.src] || "rule";
+      const conf = r.conf != null ? " · " + r.conf.toFixed(2) : "";
+      tr.innerHTML =
+        "<td class='mono'>" + r.key + "</td>" +
+        "<td class='mono dim'>" + r.sent + "</td>" +
+        "<td><span class='cat " + r.cat + "'>" + r.cat + (r.cat === "unknown" ? "" : conf) + "</span></td>" +
+        "<td><span class='tag " + (r.src === "jev" ? "tag jev" : r.src === "cache" ? "tag cache" : r.src === "pend" ? "tag pend" : r.src === "stale" ? "tag stale" : "tag rule") + "'>" + r.src + conf + "</span></td>";
+      body.appendChild(tr);
+    });
+  }
+
+  // ---------- state machine (mocked tick) ----------
+  const stateColors = { focused: "var(--green)", distracted: "var(--amber)", nudged: "var(--red)", afk: "var(--ash)", quiet_thinking: "var(--blue)" };
+
+  function classify() {
+    const s = st.surface;
+    if (s.domain === null) {
+      if (s.app === "Discord") return { ...VERDICTS["discord"], src: "jev" };
+      if (s.app === "Overwatch") return { ... VERDICTS["overwatch"], src: "jev" };
+      if (s.app === "Acrobat Reader") return { ...VERDICTS["acrobat.pdf"], src: "cache" };
+      return { cat: "productive", conf: 0.93, src: "jev", goalAligned: null };
+    }
+    const v = VERDICTS[s.key || s.domain];
+    if (v) return { ...v, src: "jev" };
+    const r = RULE_TIER[s.domain];
+    return { cat: r || "unknown", conf: null, src: r ? "rule" : "offline", goalAligned: null };
+  }
+
+  function tick(dt) {
+    if (st.state === "afk") {
+      st.inputIdle += dt;
+      if (st.inputIdle > 5) { st.present = false; }
+      if (st.inputIdle < thAfk() / 3) { // came back early
+        st.state = "focused"; st.escalated = false; st.nudgeShown = false;
+      }
+      st.dwell = 0;
+      return;
+    }
+    // face & input presence drift
+    st.inputIdle = st.demo_afk ? st.inputIdle + dt : Math.max(0, st.inputIdle - dt);
+    st.dwell += dt;
+    const c = classify();
+    st.category = st.pendingClass ? "unknown" : c.cat;
+    st.confidence = c.conf;
+
+    // vision sim
+    if (st.demo_afk) {
+      st.yaw += dt * 60; st.pitch += dt * 25;
+      if (st.inputIdle > 4) { st.present = false; st.facing = false; }
+    } else {
+      const noise = Math.sin(performance.now() / 1300) * 3;
+      st.yaw = noise + (st.surface.domain === "youtube.com/watch" ? -2 : -4);
+      st.pitch = 2 + Math.cos(performance.now() / 2100) * 2;
+      st.present = st.cameraOn;
+      st.facing = st.present && Math.abs(st.yaw) < thYaw();
+    }
+
+    // state transitions (abridged from spec §4.4)
+    const distraction = st.category === "distraction";
+    if (st.inputIdle > thAfk() && !st.present) { enterAfk(); return; }
+    if (st.cameraOn && st.present && st.facing && distraction && !st.pendingClass) {
+      const dwellLimit = thDwell() * (st.confidence != null && st.confidence < thConf() ? 2 : 1);
+      if (st.dwell >= dwellLimit) {
+        if (!st.nudgeShown) showBanner(false);
+        else if (!st.escalated && st.dwell >= dwellLimit + 120) showBanner(true);
+        st.state = "nudged";
+        return;
+      }
+      st.state = "distracted";
+    } else if (!distraction && st.cameraOn && st.present) {
+      st.state = "focused"; st.dwell = 0; st.nudgeShown = false; st.escalated = false;
+    } else if (distraction && st.cameraOn && !st.facing && st.present) {
+      st.state = "quiet_thinking"; st.dwell = 0;
+    } else if (st.category === "unknown") {
+      st.state = "focused";
+    }
+
+    // PI drip (state-based, ν of spec §4.4)
+    if (st.state === "focused") st.pi = Math.min(100, st.pi + dt / 60);
+    else if (st.state === "distracted" || st.state === "nudged") st.pi = Math.max(0, st.pi - dt / 60);
+  }
+
+  function enterAfk() {
+    st.state = "afk";
+    // camera releases on afk per spec; LED goes dark (paint handles it)
+    hideBanner();
+  }
+
+  // ---------- urgency surfaces ----------
+  function showBanner(escalated) {
+    st.nudgeShown = true; st.escalated = escalated;
+    const b = $("banner");
+    b.classList.toggle("escalate", escalated);
+    b.classList.add("show");
+    $("banner-msg").textContent = escalated ? "Escalated: you've been on this for a while." : "Soft nudge: this doesn't look like your goal.";
+    $("banner-why").textContent = why();
+  }
+  function why() {
+    const s = st.surface;
+    const src = st.confidence != null ? "Jev " + st.confidence.toFixed(2) : "rule tier";
+    return s.domain
+      ? "state → " + s.domain + " · +url+page_title vs goal “" + st.goal + "” · verdict: " + st.category + " · " + src
+      : "app → " + s.app + " · goal " + st.goal + " · " + src;
+  }
+  function hideBanner() { $("banner").classList.remove("show", "escalate"); }
+  $("snooze-btn").onclick = () => { hideBanner(); st.state = "focused"; st.dwell = 0; st.nudgeShown = false; };
+  $("dismiss-btn").onclick = () => { hideBanner(); st.nudgeShown = true; };
+  $("productive-btn").onclick = () => {
+    // override beats model, cache, everything (spec §4.2.5)
+    st.category = "productive"; st.confidence = null;
+    st.sweep.unshift({ key: st.surface.domain || st.surface.app, cat: "productive", src: "jev", conf: 0.6, sent: "manual override" });
+    hideBanner(); paintCache();
+  };
+
+  // ---------- scenarios (spec §4.6 demo keys) ----------
+  function setSurface(kind, app, domain, key) {
+    st.surface = { kind, app, domain, label: domain || app, key };
+    st.dwell = 0; st.nudgeShown = false; st.escalated = false; st.demo_afk = false;
+    hideBanner();
+  }
+  $("demo-d").onclick = () => {
+    const t = st.realTime ? 1 : 8;
+    st.speed = t;
+    setSurface("browser", "Google Chrome", "youtube.com/watch", "youtube.com/watch");
+    st.dwell = 48; // jump near the nudge moment, judges see the rest live
+  };
+  $("demo-g").onclick = () => {
+    $("goal-input").value = "edit the demo reel";
+    $("goal-set").onclick();
+    setSurface("browser", "Google Chrome", "meaningful-bakes.com", "meaningful-bakes.com");
+    st.sweep.unshift({ key: "domain:meaningful-bakes.com|new", cat: "unknown", src: "pend", conf: null, sent: "domain+url+page_title (first seen)" });
+    st.pendingClass = true;
+    setTimeout(() => {
+      const row = st.sweep[0];
+      // conf 0.29 < 0.5 → answer discarded, rules tier has never seen this
+      // domain → stays unknown (label-free, honest): spec §4.2.3 + §4.2.5
+      row.cat = "unknown"; row.src = "offline"; row.conf = null;
+      st.pendingClass = false;
+      paintCache();
+    }, 900);
+    paintCache();
+  };
+  $("demo-r").onclick = () => {
+    st.demo_afk = false; st.inputIdle = 0; st.dwell = 0; st.pi = 62;
+    $("goal-input").value = "write the spec for the hackathon project";
+    $("goal-set").onclick();
+    setSurface("app", "Visual Studio Code", null); st.state = "focused";
+    st.nudgeShown = false; st.escalated = false; hideBanner();
+  };
+  $("demo-a").onclick = () => {
+    if (st.demo_afk) {        // back at the desk: idle resets, state recovers
+      st.demo_afk = false; st.inputIdle = 0; st.state = "focused";
+    } else {                  // left: input idle starts climbing → afk in the tick
+      st.demo_afk = true; st.dwell = 0;
+    }
+  };
+
+  // low-confidence → rules; surfaced in cache inspector
+  $("snooze-btn").addEventListener("click", () => { st.inputIdle = 0; });
+
+  // ---------- thresholds ----------
+  const thDwell = () => +$("th-dwell").value;
+  const thAfk = () => +$("th-afk").value;
+  const thConf = () => +$("th-conf").value;
+  const sliders = [
+    ["th-dwell", "o-dwell", (v) => v + " s"],
+    ["th-afk", "o-afk", (v) => v + " s"],
+    ["th-conf", "o-conf", (v) => Number(v).toFixed(2)],
+    ["th-yaw", "o-yaw", (v) => v + "°"],
+  ];
+  sliders.forEach(([inp, out, fmt]) => {
+    $(inp).addEventListener("input", () => $(out).textContent = fmt($(inp).value));
+  });
+  st.thYaw = 20;
+  $("th-yaw").addEventListener("input", () => st.thYaw = +$("th-yaw").value);
+
+  // ---------- speed toggle (real spec timings vs 8× preview) ----------
+  $("speed-toggle").onclick = () => {
+    st.realTime = !st.realTime;
+    $("speed-toggle").textContent = st.realTime ? "1× real time" : "8× preview";
+  };
+
+  // ---------- camera toggle ----------
+  $("camera-toggle").onclick = () => {
+    st.cameraOn = !st.cameraOn;
+    $("camera-toggle").textContent = "Camera: " + (st.cameraOn ? "on" : "off");
+  };
+
+  // ---------- paint loop (every 500 ms real time) ----------
+  function paint() {
+    const sw = $("state-word");
+    sw.textContent = st.state.replace("_", " ");
+    sw.style.color = stateColors[st.state] || "var(--ink)";
+    const s = st.surface;
+    const srcTxt = st.category === "unknown"
+      ? (st.pendingClass ? "Jev pending…" : "offline · unresolved")
+      : (st.confidence != null ? "jev · " + st.confidence.toFixed(2) : "rule tier");
+    $("state-sub").innerHTML =
+      "surface <span class='mono'>" + (s.domain || s.app) + "</span>" +
+      " · category <span class='mono'>" + st.category + "</span>" +
+      " · source <span class='mono'>" + srcTxt + "</span>" +
+      " · goal <span class='mono'>“" + st.goal.slice(0, 26) + (st.goal.length > 26 ? "…" : "") + "”</span>";
+
+    $("yaw-val").textContent = Math.round(st.yaw) + "°";
+    $("pitch-val").textContent = Math.round(st.pitch) + "°";
+    $("geom-verdict").textContent = !st.cameraOn ? "camera off" : !st.present ? "no face" : st.facing ? "facing screen" : "looking away";
+    $("geom-verdict").style.color = st.facing && st.present ? "var(--green)" : st.present ? "var(--amber)" : "var(--dim)";
+
+    $("dwell-num").textContent = fmtTime(Math.max(0, st.dwell));
+    const limit = thDwell() * (st.confidence != null && st.confidence < thConf() ? 2 : 1);
+    const pct = Math.min(100, (st.dwell / limit) * 100);
+    $("dwell-fill").style.width = pct + "%";
+    $("dwell-note").textContent = (st.category === "distraction")
+      ? "nudge at " + fmtTime(limit) + (st.confidence != null && st.confidence < thConf() ? " · doubled (low confidence)" : "")
+      : "nudge only while distraction + facing";
+
+    $("pi-value").textContent = Math.round(st.pi);
+    $("pi-focus-time").textContent = st.focusMin + "m";
+    $("pi-afk-time").textContent = st.afkMin + "m";
+    $("input-label").textContent = "input idle " + Math.floor(st.inputIdle) + "s · afk at " + fmtTime(thAfk());
+
+    if (st.cameraOn && st.present && st.state !== "afk") { $("cam-led").className = "led on"; $("cam-label").textContent = "camera on · releasing on afk"; }
+    else if (st.state === "afk") { $("cam-led").className = "led off"; $("cam-label").textContent = "camera released (LED off)"; }
+    else { $("cam-led").className = "led off"; $("cam-label").textContent = "camera off"; }
+  }
+
+  // ---------- main loop ----------
+  let last = performance.now();
+  function loop(now) {
+    const realDt = Math.min(0.5, (now - last) / 1000);
+    last = now;
+    const dt = realDt * (st.realTime ? 1 : 8);
+    tick(dt);
+    // trace and jitter
+    trace.push({ y: st.yaw + Math.sin(now / 950) * 1.1, p: st.pitch });
+    trace.shift();
+    drawYaw();
+    paint();
+    requestAnimationFrame(loop);
+  }
+
+  // init
+  seedPi(); drawPi();
+  renderGoal(); paintCache();
+  requestAnimationFrame(loop);
+
+  // keyboard shortcuts (spec §4.6)
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey) return;
+    if (/input|textarea/i.test(document.activeElement.tagName)) return;
+    const k = e.key.toLowerCase();
+    if (k === "d") $("demo-d").click();
+    if (k === "g") $("demo-g").click();
+    if (k === "r") $("demo-r").click();
+  });
+})();
+</script>
+</body>
+</html>
