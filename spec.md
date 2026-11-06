@@ -37,7 +37,7 @@ People drift into distraction without noticing. Existing blockers are punitive (
 | **Upload of camera frames or screenshots anywhere, ever** | ❌ Cut — vision output is yaw/pitch/booleans, computed locally by MediaPipe/OpenCV |
 | Accounts, multi-user sync | ❌ Cut — single local user |
 | Blocking sites/apps outright | ❌ Cut — nudges only, no enforcement |
-| macOS / Linux support | ❌ Cut in v1 — Windows only (`pywin32` Win32 calls) |
+| macOS support | ❌ Cut in v1. Windows (`pywin32`) and Linux are supported. On Linux, X11 is full support (EWMH + XScreenSaver via `python-xlib`); native Wayland is best-effort: idle only, no foreground app, because Wayland has no generic API for the focused window |
 
 ---
 
@@ -400,7 +400,7 @@ WS binds to `127.0.0.1`. Extension keeps its own settings in `storage.sync` (eng
 
 ## 9. Tech Stack
 
-- **Engine:** Python 3.10+ · **`typesafe-sdk`** (Jev client, model `jev-latest`) · `websockets`/FastAPI for local WS + dashboard · **`onnxruntime` + a MiniLM-class sentence encoder** (local tier, §4.2.5) · **pywin32** (observer only, no admin) · **OpenCV** capture · **MediaPipe Tasks Python** Face Landmarker (CPU delegate default) · `keyboard` (global hotkeys) · `plyer`/PowerShell toasts · `logging` text-only rotating log.
+- **Engine:** Python 3.12 · **`typesafe-sdk`** (Jev client, model `jev-latest`) · FastAPI for the extension WS only · **PySide6** native window + tray (replaces the web dashboard) · **`onnxruntime` + a MiniLM-class sentence encoder** (local tier, §4.2.5) · **pywin32** on Windows / **python-xlib** on Linux X11 (observer only, no admin/root) · **OpenCV** capture · **MediaPipe Tasks Python** Face Landmarker (CPU delegate default) · `keyboard` (global hotkeys) · `plyer`/PowerShell toasts · `logging` text-only rotating log.
 - **Extension:** TypeScript, plain MV3 (background + manifest only), no build framework.
 - **Dashboard:** vanilla HTML/JS + canvas chart, framework-free.
 - **Testing:** `pytest` for the state machine, confidence-routing table, cache behavior, and local embedding tier (synthetic events); a recorded-surface fixture suite replaying past Jev answers so classifier behavior is testable offline; vision smoke-tests against a webcam fixture; M1.4 spike script doubles as a live integration test.

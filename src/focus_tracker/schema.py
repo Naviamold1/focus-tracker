@@ -6,8 +6,9 @@ here; nothing imports another component's internals. Change it deliberately.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 SCHEMA_VERSION = 1
 
@@ -144,11 +145,37 @@ class Classifier(Protocol):
 
     def on_goal_changed(self, goal: str) -> None: ...
 
+    def set_override(self, key: str, category: Category) -> None:
+        """User reclassification; persisted, beats every other source (scoped to the key's goal)."""
+        ...
+
+    def cache_entries(self) -> list[dict[str, object]]:
+        """Rows for the dashboard cache inspector: key, category, source, confidence, ts, label."""
+        ...
+
+    def clear_cache(self) -> None: ...
+
 
 class AppWatcherLike(Protocol):
     def start(self) -> None: ...
     def stop(self) -> None: ...
     def latest(self) -> AppSignal | None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class FrameSnapshot:
+    """Latest camera frame plus what the detector found, for the local Qt window only.
+
+    Never written to disk, never sent over any socket. The window paints it and drops it."""
+
+    image: Any  # numpy uint8 array, HxWx3 RGB (already converted from BGR), downscaled to <= 640 wide
+    landmarks: Any | None  # numpy float32 (478, 2), pixel coords in `image`; None when no face
+    face_score: float | None  # detector presence confidence 0..1
+    box: tuple[float, float, float, float] | None  # x, y, w, h in image pixels
+    nose: tuple[float, float] | None  # nose tip, image pixels (origin of the pose axes)
+    axes: tuple[tuple[float, float], tuple[float, float], tuple[float, float]] | None
+    # ^ projected endpoints (image pixels) of the head's x (red), y (green), z/forward (blue) axes
+    ts: int
 
 
 class VisionLike(Protocol):
@@ -161,6 +188,47 @@ class VisionLike(Protocol):
         """Start a 3 s 'look at the screen' baseline capture (spec §10 #10, adopted)."""
         ...
     def latest(self) -> VisionEvent | None: ...
+    def latest_frame(self) -> FrameSnapshot | None:
+        """Most recent inferred frame with overlay data; None when the camera is off or unavailable."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class UiState:
+    """Engine -> Qt window, once per 2 s tick (and after each command)."""
+
+    tick: Tick
+    extra: dict[str, Any]  # dwell_sec, dwell_limit_sec, pi_series, focused_sec, input_idle_sec, nudge_text, ...
+    surface: Surface | None  # full fused surface (process, window title, url path) for the foreground panel
+    app: AppSignal | None  # raw watcher sample (process name, idle)
+    browser_connected: bool  # extension socket open
+    browser_last_event_ms: int | None
+    cache: list[dict[str, object]]  # classifier cache rows, newest first
+    goal_history: list[str]
+    thresholds: dict[str, float]
+    camera_on: bool
+    jev_online: bool
+    jev_last_ms: float | None  # last Jev round-trip latency
+
+
+class EngineHandle(Protocol):
+    """How the Qt window talks to the engine, which runs its asyncio loop on a background thread."""
+
+    def start(self, on_update: Callable[[UiState], None]) -> None:
+        """Start the engine thread. `on_update` is called FROM THE ENGINE THREAD; the UI must
+        marshal it to the Qt thread (e.g. emit a Qt signal)."""
+        ...
+
+    def command(self, msg: dict[str, Any]) -> None:
+        """Thread-safe. Same command dicts as before: set_goal, toggle_camera, calibrate, snooze,
+        reclassify{category}, exclude, set_threshold{name,value}, demo{which: D|G|R}."""
+        ...
+
+    def vision(self) -> VisionLike | None:
+        """Direct access for the camera view to poll latest_frame() at its own rate."""
+        ...
+
+    def stop(self) -> None: ...
 
 
 @dataclass(slots=True)

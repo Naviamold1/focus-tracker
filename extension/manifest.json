@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Tracker Sensor",
+  "version": "0.1.0",
+  "description": "Reports the active tab (query-stripped URL, domain, title) to the local Focus Tracker engine.",
+  "minimum_chrome_version": "116",
+  "permissions": ["tabs", "alarms", "storage"],
+  "background": { "service_worker": "dist/background.js", "type": "module" },
+  "incognito": "spanning"
+}
